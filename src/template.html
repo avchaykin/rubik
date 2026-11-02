@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cube Coach</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<style>
+  :root {
+    --bg: #eef0f4;
+    --panel: #ffffff;
+    --panel-2: #f6f7fa;
+    --ink: #14171f;
+    --muted: #5d6573;
+    --line: #dfe3ea;
+    --accent: #0e9fbf;
+    --accent-soft: rgba(14, 159, 191, 0.12);
+    --ok: #12a26b;
+    --stage-top: #f7f8fb;
+    --stage-bot: #dde2ea;
+    --chip: #eceff4;
+    --shadow: 0 10px 30px rgba(20, 25, 40, 0.12);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0e13;
+      --panel: #13161e;
+      --panel-2: #191d27;
+      --ink: #e9ecf2;
+      --muted: #8d95a5;
+      --line: #252a36;
+      --accent: #2ee6ff;
+      --accent-soft: rgba(46, 230, 255, 0.12);
+      --ok: #3ddc97;
+      --stage-top: #1a1f2b;
+      --stage-bot: #0b0d12;
+      --chip: #1f2430;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid; grid-template-rows: auto 1fr; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ---- header ---- */
+  header {
+    display: flex; align-items: center; gap: 20px; padding: 10px 18px;
+    border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; font-size: 17px; white-space: nowrap; }
+  .brand-mark { width: 22px; height: 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .brand-mark i { border-radius: 2px; }
+  .tabs { display: flex; gap: 4px; background: var(--panel-2); border: 1px solid var(--line); padding: 3px; border-radius: 10px; overflow-x: auto; }
+  .tab { border: 0; background: transparent; padding: 6px 14px; border-radius: 7px; font-weight: 600; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .tab small { display: block; font-weight: 500; font-size: 11px; opacity: .8; }
+  .tab[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+
+  /* ---- layout ---- */
+  .app { display: grid; grid-template-columns: 360px 1fr; min-height: 0; }
+  aside { border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; padding: 18px 16px 40px; }
+  .intro { color: var(--muted); font-size: 14px; margin: 0 4px 16px; }
+  .stage-card { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; background: var(--panel); overflow: hidden; }
+  .stage-card.open { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .stage-head { width: 100%; display: flex; gap: 12px; align-items: flex-start; text-align: left; border: 0; background: none; padding: 12px; }
+  .num { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--chip); color: var(--muted); }
+  .open .num { background: var(--accent); color: #05212a; }
+  .stage-head b { display: block; font-size: 15px; }
+  .stage-head span { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+  .stage-body { display: none; padding: 0 12px 12px 50px; }
+  .open .stage-body { display: block; }
+  .stage-body p { margin: 0 0 10px; font-size: 13.5px; color: var(--muted); }
+  .cases { display: flex; flex-direction: column; gap: 6px; }
+  .case-btn { text-align: left; border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 7px 10px; font-size: 13.5px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .case-btn code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48%; }
+  .case-btn:hover { border-color: var(--accent); }
+  .case-btn.active { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .case-btn.done::after { content: "✓"; color: var(--ok); font-weight: 700; margin-left: 4px; }
+
+  /* notation panel */
+  .note-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 8px 0 16px; }
+  .mv-btn { border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 8px 0; font-family: var(--mono); font-weight: 700; font-size: 14px; }
+  .mv-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .note-sec h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 4px 4px; }
+  .note-sec p { font-size: 13.5px; color: var(--muted); margin: 4px 4px 8px; }
+  .row-btns { display: flex; gap: 8px; margin: 6px 0 4px; }
+  .pill { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
+  .pill:hover { border-color: var(--accent); }
+  .method-pick { display: grid; gap: 6px; margin: 6px 0 12px; }
+  .method-opt { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; text-align: left; border: 1px solid var(--line); background: var(--panel-2);
+    border-radius: 10px; padding: 8px 11px; color: var(--ink); }
+  .method-opt b { font-size: 13.5px; }
+  .method-opt em { font-style: normal; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); align-self: center; }
+  .method-opt small { grid-column: 1 / -1; font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .method-opt:hover { border-color: var(--accent); }
+  .method-opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .method-opt[aria-pressed="true"] em { color: var(--accent); }
+  .method-opt:disabled { opacity: .6; }
+
+  /* ---- stage ---- */
+  main { position: relative; min-height: 0; background: radial-gradient(ellipse at 50% 35%, var(--stage-top), var(--stage-bot) 75%); overflow: hidden; }
+  #view { position: absolute; inset: 0; }
+  #view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .hud-top { position: absolute; top: 16px; left: 18px; right: 18px; display: flex; justify-content: space-between; gap: 12px; pointer-events: none; }
+  .crumb { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .case-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 0; }
+  .goal { color: var(--muted); font-size: 13.5px; max-width: 420px; margin-top: 2px; }
+  .toggles { display: flex; gap: 6px; pointer-events: auto; align-items: flex-start; flex-wrap: wrap; justify-content: flex-end; }
+  .toggle { border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 85%, transparent); backdrop-filter: blur(8px); border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .target-card { position: absolute; top: 58px; right: 18px; width: 180px; height: 206px; border-radius: 14px; border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 70%, transparent); box-shadow: var(--shadow); overflow: hidden; }
+  .target-card span { display: block; padding: 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--panel); }
+  .toggle[aria-pressed="true"] { color: var(--ink); border-color: var(--accent); }
+  .style-pick { position: relative; }
+  .style-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: 210px; padding: 6px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: grid; gap: 2px; }
+  .style-menu[hidden] { display: none; }
+  .style-opt { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 6px 8px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; color: var(--ink); text-align: left; }
+  .style-opt:hover { background: var(--panel-2); }
+  .style-opt[aria-checked="true"] { background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--accent); }
+  .style-chip { flex: none; width: 30px; height: 30px; border-radius: 7px; display: grid; grid-template-columns: repeat(3, 1fr);
+    box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .style-chip i { border-radius: 2px; }
+
+  .dock {
+    position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+    width: min(760px, calc(100% - 32px));
+    background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(12px);
+    border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 14px 16px;
+  }
+  .alg { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+  .chip { font-family: var(--mono); font-weight: 700; font-size: 14px; border: 1px solid transparent; background: var(--chip); border-radius: 7px; padding: 3px 9px; min-width: 34px; text-align: center; }
+  .chip.done { opacity: .4; }
+  .chip.current { background: var(--accent); color: #05212a; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .dock-row { display: flex; align-items: center; gap: 14px; }
+  .scrub-wrap { position: relative; height: 22px; margin: -4px 0 10px; }
+  .scrub-ticks { position: absolute; left: 8px; right: 8px; top: 50%; height: 6px; transform: translateY(-50%); pointer-events: none; display: flex; gap: 3px; }
+  .scrub-ticks i { flex: 1; border-radius: 3px; --f: 0;
+    background: linear-gradient(90deg, var(--accent) calc(var(--f) * 100%), var(--chip) calc(var(--f) * 100%)); }
+  .scrub { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+  .scrub::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+  .scrub::-moz-range-track { height: 4px; background: transparent; }
+  .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%;
+    background: var(--panel); border: 3px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .scrub::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--panel); border: 3px solid var(--accent); }
+  .move-big { font-family: var(--mono); font-size: 30px; font-weight: 800; min-width: 64px; text-align: center; color: var(--accent); line-height: 1; }
+  .move-text { flex: 1; min-width: 0; }
+  .move-text b { display: block; font-size: 15px; }
+  .move-text span { color: var(--muted); font-size: 13px; }
+  .controls { display: flex; gap: 6px; align-items: center; }
+  .ctl { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); display: grid; place-items: center; }
+  .ctl:hover { border-color: var(--accent); }
+  .ctl.primary { background: var(--accent); border-color: var(--accent); color: #05212a; width: 48px; }
+  .ctl svg { width: 18px; height: 18px; fill: currentColor; }
+  .speed { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .speed input { width: 80px; accent-color: var(--accent); }
+  .case-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+  .solved-flash { color: var(--ok); font-weight: 700; }
+
+  .langs { margin-left: auto; display: flex; gap: 2px; background: var(--panel-2); border: 1px solid var(--line); padding: 3px; border-radius: 9px; }
+  .lang { border: 0; background: transparent; padding: 4px 9px; border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+  .lang[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+
+  /* my cube: editor */
+  .palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 6px 0 14px; }
+  .swatch { border: 2px solid transparent; border-radius: 10px; padding: 0; height: 46px; position: relative; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+  .swatch span { position: absolute; bottom: 3px; left: 0; right: 0; font-size: 10.5px; font-weight: 700; color: rgba(0,0,0,.65); }
+  .swatch.sel { border-color: var(--ink); box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 1px rgba(0,0,0,.18); }
+  .net { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; margin: 4px 0 14px; }
+  .cell { aspect-ratio: 1; border: 0; border-radius: 4px; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); font-size: 11px; font-weight: 800; color: rgba(0,0,0,.55); }
+  .cell.empty { background: repeating-linear-gradient(45deg, var(--chip), var(--chip) 4px, var(--panel-2) 4px, var(--panel-2) 8px); }
+  .cell.center { cursor: default; }
+  .face-gap { margin-right: 3px; }
+  .field { display: flex; gap: 6px; margin: 4px 0 6px; }
+  .field input { flex: 1; min-width: 0; font: 13px var(--mono); padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .msg { font-size: 13px; margin: 12px 2px; padding: 9px 11px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+  .msg.err { border-color: #e0605e; color: #d24a48; }
+  .msg.ok { border-color: var(--ok); color: var(--ok); }
+  .big-btn { width: 100%; border: 0; border-radius: 11px; padding: 12px; font-weight: 700; font-size: 15px; background: var(--accent); color: #05212a; }
+  .big-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin: 14px 2px 4px; }
+  .paint-swatch { width: 40px; height: 40px; border-radius: 9px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); margin: 0 12px; flex: none; }
+
+  /* my cube: solution list */
+  .sol-stage { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin: 14px 4px 6px; display: flex; gap: 8px; align-items: center; }
+  .sol-stage .num { width: 20px; height: 20px; font-size: 11px; }
+  .seg-btn { width: 100%; text-align: left; border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 7px 10px; font-size: 13.5px; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+  .seg-btn small { color: var(--muted); white-space: nowrap; }
+  .seg-btn:hover { border-color: var(--accent); }
+  .seg-btn.active { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .seg-btn.done { opacity: .6; }
+  .seg-btn.done span::after { content: " ✓"; color: var(--ok); font-weight: 700; }
+
+  @media (max-width: 860px) {
+    .tab small { display: none; }
+    .langs { position: absolute; top: 10px; right: 16px; }
+    header { position: relative; }
+    body { overflow: auto; grid-template-rows: auto auto; }
+    header { flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
+    .tabs { width: 100%; }
+    .tab { flex: 1; padding: 6px 8px; }
+    .app { grid-template-columns: 1fr; }
+    main { height: 78vh; min-height: 520px; order: -1; }
+    aside { border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+    .dock { bottom: 10px; padding: 10px 12px; width: calc(100% - 20px); }
+    .dock-row { flex-wrap: wrap; gap: 10px; }
+    .move-big { font-size: 24px; min-width: 48px; }
+    .controls { width: 100%; justify-content: space-between; }
+    .hud-top { top: 10px; left: 16px; right: 16px; flex-direction: column; }
+    .case-title { font-size: 18px; }
+    .goal { display: none; }
+    .toggles { justify-content: flex-start; }
+    .target-card { top: auto; bottom: 150px; right: 10px; width: 112px; height: 134px; }
+    .target-card span { font-size: 9.5px; padding: 4px 7px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <i style="background:#ffd500"></i><i style="background:#009e60"></i><i style="background:#ff5800"></i>
+      <i style="background:#c41e3a"></i><i style="background:#ffd500"></i><i style="background:#0051ba"></i>
+      <i style="background:#f4f4f4"></i><i style="background:#ff5800"></i><i style="background:#009e60"></i>
+    </div>
+    Cube Coach
+  </div>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div class="langs" id="langs">
+    <button class="lang" data-lang="en">EN</button><button class="lang" data-lang="ru">RU</button><button class="lang" data-lang="fr">FR</button>
+  </div>
+</header>
+
+<div class="app">
+  <aside id="panel"></aside>
+  <main>
+    <div class="target-card" id="targetCard" hidden><span data-i18n="After this step"></span></div>
+    <div id="view"></div>
+    <div class="hud-top">
+      <div>
+        <div class="crumb" id="crumb"></div>
+        <div class="case-title" id="caseTitle"></div>
+        <div class="goal" id="goal"></div>
+      </div>
+      <div class="toggles">
+        <button class="toggle" id="tFocus" aria-pressed="true" data-i18n="Focus" data-i18n-title="Grey out stickers that don't matter for this step"></button>
+        <button class="toggle" id="tLabels" aria-pressed="true" data-i18n="Face letters" data-i18n-title="Show face letters U D F B L R"></button>
+        <button class="toggle" id="tTarget" aria-pressed="true" data-i18n="Target" data-i18n-title="Show the cube as it should look at the end of this step"></button>
+        <div class="style-pick">
+          <button class="toggle" id="tStyle" aria-haspopup="true" aria-expanded="false" data-i18n="Style" data-i18n-title="Cube style"></button>
+          <div class="style-menu" id="styleMenu" role="menu" hidden></div>
+        </div>
+        <button class="toggle" id="tView" data-i18n="Reset view" data-i18n-title="Reset camera"></button>
+      </div>
+    </div>
+    <div class="dock">
+      <div class="alg" id="alg"></div>
+      <div class="scrub-wrap" id="scrubRow">
+        <div class="scrub-ticks" id="scrubTicks"></div>
+        <input type="range" class="scrub" id="scrub" min="0" max="1" step="0.001" value="0" data-i18n-title="Drag to move smoothly through the moves of this step">
+      </div>
+      <div class="dock-row">
+        <div class="move-big" id="moveBig">·</div><div class="paint-swatch" id="paintSwatch" hidden></div>
+        <div class="move-text"><b id="moveName"></b><span id="moveDesc"></span></div>
+        <div class="controls">
+          <button class="ctl" id="bRestart" data-i18n-title="Restart (Home)"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14l-10-7z"/></svg></button>
+          <button class="ctl" id="bPrev" data-i18n-title="Step back (←)"><svg viewBox="0 0 24 24"><path d="M18 5v14L7 12z"/></svg></button>
+          <button class="ctl primary" id="bPlay" data-i18n-title="Play / pause (Space)"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 4v16l13-8z"/></svg></button>
+          <button class="ctl" id="bNext" data-i18n-title="Step forward (→)"><svg viewBox="0 0 24 24"><path d="M6 5v14l11-7z"/></svg></button>
+          <label class="speed"><span data-i18n="Speed"></span> <input type="range" id="speed" min="0.4" max="2.5" step="0.1" value="1"></label>
+        </div>
+      </div>
+      <div class="case-note" id="caseNote"></div>
+    </div>
+  </main>
+</div>
+
+<script id="cube-logic">
+/*__LOGIC__*/
+</script>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<!-- fetch the 3D library files in parallel, after the import map so their imports resolve -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" crossorigin>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js" crossorigin>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/geometries/RoundedBoxGeometry.js" crossorigin>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const Cube = window.CubeLogic, METHODS = window.METHODS, Solver = window.CubeSolver;
+const $ = (id) => document.getElementById(id);
+
+// ================= 3D scene =================
+// Cube styles: body plastic, sticker palette, tile size (1 = classic sticker) and sticker glow.
+const STYLES = {
+  classic: { name: 'Classic black', body: 0x111318, bodyRough: 0.55, tile: 1, rough: 0.32, glow: 0.26,
+    colors: { U: 0xffd500, D: 0xffffff, F: 0x009e60, B: 0x0051ba, R: 0xff5800, L: 0xc41e3a } },
+  gan: { name: 'GAN white', body: 0xdfe2e7, bodyRough: 0.38, tile: 1.08, rough: 0.2, glow: 0.42,
+    colors: { U: 0xf2ff00, D: 0xffffff, F: 0x2dff3c, B: 0x00a2ff, R: 0xff6200, L: 0xff1458 } },
+  stickerless: { name: 'Stickerless', body: 0x26292f, bodyRough: 0.6, tile: 1.16, rough: 0.45, glow: 0.3,
+    colors: { U: 0xfff200, D: 0xf7f7f7, F: 0x18d24c, B: 0x1f6cff, R: 0xff8a00, L: 0xff2a44 } },
+  pastel: { name: 'Pastel', body: 0xf3eee7, bodyRough: 0.5, tile: 1.04, rough: 0.4, glow: 0.24,
+    colors: { U: 0xffe27a, D: 0xffffff, F: 0x8ad9ad, B: 0x8cb5f0, R: 0xffb07a, L: 0xf2899c } },
+  neon: { name: 'Neon', body: 0x07070b, bodyRough: 0.3, tile: 0.96, rough: 0.25, glow: 0.6,
+    colors: { U: 0xf3ff2e, D: 0xf2f6ff, F: 0x2bff88, B: 0x2ea8ff, R: 0xff8a1f, L: 0xff2e7a } },
+};
+const FACE_HEX = { ...STYLES.classic.colors };
+const GREY = new THREE.Color(0x4a505a);
+const RIBBON_HEX = 0x22d3ee;
+const AXIS_VEC = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+const HOME_CAM = new THREE.Vector3(5.6, 4.6, 7.6);
+
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+camera.position.copy(HOME_CAM);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa1ad, 1.6));
+const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(5, 9, 7); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.8); fill.position.set(-6, -3, -5); scene.add(fill);
+const under = new THREE.DirectionalLight(0xffffff, 1.5); under.position.set(2, -10, 3); scene.add(under);
+
+const cubeRoot = new THREE.Group(); scene.add(cubeRoot);
+const pivot = new THREE.Group(); cubeRoot.add(pivot);
+
+// --- cubies ---
+const bodyGeo = new RoundedBoxGeometry(0.96, 0.96, 0.96, 3, 0.09);
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111318, roughness: 0.55, metalness: 0.05 });
+const stickerGeo = (() => {
+  const s = 0.4, r = 0.11, sh = new THREE.Shape();
+  sh.moveTo(-s + r, -s); sh.lineTo(s - r, -s); sh.quadraticCurveTo(s, -s, s, -s + r);
+  sh.lineTo(s, s - r); sh.quadraticCurveTo(s, s, s - r, s); sh.lineTo(-s + r, s);
+  sh.quadraticCurveTo(-s, s, -s, s - r); sh.lineTo(-s, -s + r); sh.quadraticCurveTo(-s, -s, -s + r, -s);
+  return new THREE.ShapeGeometry(sh, 6);
+})();
+
+let state = Cube.newState();
+const stickerMeshes = [];
+const buildCube = (root, pickable) => state.cubies.map((c) => {
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(bodyGeo, bodyMat));
+  const stickers = c.stickers.map((s) => {
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.0 });
+    const mesh = new THREE.Mesh(stickerGeo, mat);
+    const n = new THREE.Vector3(...s.n);
+    mesh.position.copy(n).multiplyScalar(0.483);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+    group.add(mesh);
+    mesh.userData.sticker = s;
+    if (pickable) stickerMeshes.push(mesh);
+    return { mesh, s };
+  });
+  root.add(group);
+  return { group, stickers, c };
+});
+const pieces = buildCube(cubeRoot, true);
+
+// --- target inset: the cube as it should look at the end of the current step ---
+const targetScene = new THREE.Scene();
+targetScene.add(new THREE.HemisphereLight(0xffffff, 0x9aa1ad, 1.6));
+const tKey = new THREE.DirectionalLight(0xffffff, 1.7); tKey.position.set(5, 9, 7); targetScene.add(tKey);
+const targetRoot = new THREE.Group(); targetScene.add(targetRoot);
+const targetPieces = buildCube(targetRoot, false);
+const targetCam = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+let targetState = null, showTarget = true;
+
+// Render on demand: anything that changes the picture calls invalidate().
+let dirty = 2;
+const invalidate = () => { dirty = 2; };
+
+const _m4 = new THREE.Matrix4();
+function place(list, st) {
+  invalidate();
+  list.forEach((p, i) => {
+    p.c = st.cubies[i];
+    const r = p.c.rot;
+    p.group.position.set(...p.c.pos);
+    _m4.set(r[0], r[1], r[2], 0, r[3], r[4], r[5], 0, r[6], r[7], r[8], 0, 0, 0, 0, 1);
+    p.group.quaternion.setFromRotationMatrix(_m4);
+  });
+}
+const sync = () => { clearPose(); place(pieces, state); };
+
+// --- colours: focus mask + dimming of pieces not in the turning layer ---
+let maskName = 'all', maskOn = true, activeMove = null;
+let paintColors = null; // when set (cube editor), stickers show these painted colours instead
+const UNPAINTED = new THREE.Color(0x8a919c);
+let GLOW = 0.26; const HIGHLIGHT = new THREE.Color(0x0b2a30);
+function setSticker(mat, color, dim, highlight) {
+  mat.color.copy(color);
+  if (dim) mat.color.multiplyScalar(0.28);
+  mat.emissive.copy(mat.color).multiplyScalar(GLOW);
+  if (highlight) mat.emissive.add(HIGHLIGHT);
+}
+const _col = new THREE.Color();
+function refreshColors() {
+  invalidate();
+  if (paintColors) {
+    for (const p of pieces)
+      for (const st of p.stickers) {
+        const [f, i] = Solver.faceletOf(p.c.pos, Cube.mulV(p.c.rot, st.s.n));
+        const v = paintColors[f][i];
+        setSticker(st.mesh.material, v ? _col.setHex(FACE_HEX[v]) : UNPAINTED);
+      }
+    return;
+  }
+  const mask = Cube.MASKS[maskOn ? maskName : 'all'];
+  if (targetState) {
+    place(targetPieces, targetState);
+    for (const p of targetPieces)
+      for (const st of p.stickers) {
+        setSticker(st.mesh.material, mask(p.c, st.s) ? _col.setHex(FACE_HEX[st.s.face]) : GREY);
+      }
+  }
+  const ai = activeMove ? Cube.AXI[activeMove.axis] : -1;
+  for (const p of pieces) {
+    const inLayer = activeMove && activeMove.layers.includes(p.c.pos[ai]);
+    const dim = activeMove && !inLayer;
+    for (const st of p.stickers) {
+      setSticker(st.mesh.material, mask(p.c, st.s) ? _col.setHex(FACE_HEX[st.s.face]) : GREY, dim, inLayer);
+    }
+  }
+}
+
+let styleId = 'classic';
+function applyStyle(id) {
+  const st = STYLES[id] || STYLES.classic;
+  styleId = STYLES[id] ? id : 'classic';
+  Object.assign(FACE_HEX, st.colors);
+  GLOW = st.glow;
+  bodyMat.color.setHex(st.body); bodyMat.roughness = st.bodyRough;
+  for (const p of [...pieces, ...targetPieces])
+    for (const s of p.stickers) { s.mesh.scale.set(st.tile, st.tile, 1); s.mesh.material.roughness = st.rough; }
+  refreshColors();
+}
+
+// --- layer highlight box ---
+const layerHL = new THREE.Group();
+const hlFill = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshBasicMaterial({ color: RIBBON_HEX, transparent: true, opacity: 0.07, depthWrite: false }));
+const hlEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+  new THREE.LineBasicMaterial({ color: RIBBON_HEX, transparent: true, opacity: 0.9 }));
+layerHL.add(hlFill, hlEdges);
+layerHL.visible = false;
+cubeRoot.add(layerHL);
+
+function showLayer(mv) {
+  const lo = Math.min(...mv.layers), hi = Math.max(...mv.layers);
+  const size = [3.1, 3.1, 3.1], pos = [0, 0, 0], ai = Cube.AXI[mv.axis];
+  size[ai] = hi - lo + 1 + 0.1;
+  pos[ai] = (lo + hi) / 2;
+  if (layerHL.parent !== cubeRoot) cubeRoot.attach(layerHL);
+  layerHL.position.set(...pos);
+  layerHL.quaternion.identity();
+  layerHL.scale.set(...size);
+  layerHL.visible = true;
+}
+
+// --- ribbon arrow: a solid band lying on a virtual cylinder around the turning layer.
+// The band itself keeps travelling round the full circle in the turning direction.
+// Solid on the side of the layer facing the viewer, mostly transparent once it travels round the back.
+const ribbonMat = new THREE.ShaderMaterial({
+  uniforms: { color: { value: new THREE.Color(RIBBON_HEX) }, opacity: { value: 1 } },
+  vertexShader: `varying float vFacing;
+    void main(){
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vec3 radial = normalize(mat3(modelMatrix) * vec3(position.x, 0.0, position.z));
+      vFacing = dot(radial, normalize(cameraPosition - wp.xyz));
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }`,
+  fragmentShader: `uniform vec3 color; uniform float opacity; varying float vFacing;
+    void main(){ gl_FragColor = vec4(color, opacity * mix(0.14, 1.0, smoothstep(0.05, 0.45, vFacing))); }`,
+  transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
+});
+
+const ARROW_LEN = THREE.MathUtils.degToRad(70), ARROW_R = 2.3;
+const ribbonGeometry = (() => {
+  const h = 0.26, headH = 0.5, headLen = 0.5 / ARROW_R; // half-heights along the axis, head length as an angle
+  const pos = [], idx = [];
+  const strip = (a0, a1, n, hw) => {
+    const base = pos.length / 3;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, a = a0 + (a1 - a0) * t, y = hw(t);
+      for (const yy of [-y, y]) pos.push(ARROW_R * Math.cos(a), yy, -ARROW_R * Math.sin(a));
+      if (i) { const b = base + (i - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+    }
+  };
+  const bodyEnd = ARROW_LEN - headLen;
+  strip(0, bodyEnd, 40, () => h);
+  strip(bodyEnd, ARROW_LEN, 16, (t) => headH * (1 - t));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  return g;
+})();
+
+const arrow = new THREE.Group();       // positioned on the turning axis
+const arrowSpin = new THREE.Group();   // rotated around the axis; animated along the cylinder
+const arrowMesh = new THREE.Mesh(ribbonGeometry, ribbonMat); arrowMesh.renderOrder = 3;
+arrowSpin.add(arrowMesh);
+arrow.add(arrowSpin);
+arrow.visible = false;
+cubeRoot.add(arrow);
+let arrowRun = null; // { from, sign, t0 }
+const ARROW_LAP_MS = 2600;
+
+function showArrow(mv) {
+  const lo = Math.min(...mv.layers), hi = Math.max(...mv.layers);
+  const sign = Math.sign(mv.q);
+  arrow.position.copy(AXIS_VEC[mv.axis]).multiplyScalar((lo + hi) / 2);
+  arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), AXIS_VEC[mv.axis]);
+  // centre the sweep on the side of the layer facing the camera
+  const local = camera.position.clone().sub(arrow.position).applyQuaternion(arrow.quaternion.clone().invert());
+  const phi = Math.atan2(-local.z, local.x);
+  arrowSpin.scale.set(1, 1, sign);
+  // each lap starts with the arrow just behind the camera-facing side
+  if (!arrowRun) arrowRun = { t0: performance.now() };
+  Object.assign(arrowRun, { from: phi - sign * ARROW_LEN, sign });
+  arrow.visible = true;
+}
+
+function animateArrow(now) {
+  if (!arrow.visible || !arrowRun) return;
+  const lap = (now - arrowRun.t0) / ARROW_LAP_MS;
+  arrowSpin.rotation.set(0, arrowRun.from + arrowRun.sign * lap * Math.PI * 2, 0);
+  const fadeIn = Math.min(1, lap / 0.1);
+  ribbonMat.uniforms.opacity.value = fadeIn;
+}
+
+function setActive(mv) {
+  activeMove = mv;
+  if (mv) { arrowRun = null; showLayer(mv); showArrow(mv); } else { layerHL.visible = false; arrow.visible = false; }
+  refreshColors();
+}
+
+// --- face letters ---
+const labels = new THREE.Group();
+for (const [f, v] of Object.entries({ U: [0, 1, 0], D: [0, -1, 0], F: [0, 0, 1], B: [0, 0, -1], R: [1, 0, 0], L: [-1, 0, 0] })) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(10,12,18,0.72)'; ctx.beginPath(); ctx.arc(64, 64, 52, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 64px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(f, 64, 68);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.position.set(...v).multiplyScalar(2.05);
+  sp.scale.setScalar(0.42);
+  labels.add(sp);
+}
+scene.add(labels);
+
+// --- turn animation ---
+let anim = null;
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+// Half turns play as two quarter turns with a short stop in between.
+const HALF_STOP = 0.14; // share of the half-turn time spent paused at 90°
+const easeHalf = (t) => {
+  const q = (1 - HALF_STOP) / 2;
+  if (t < q) return ease(t / q) / 2;
+  if (t < q + HALF_STOP) return 0.5;
+  return 0.5 + ease((t - q - HALF_STOP) / q) / 2;
+};
+const turnEase = (mv) => (Math.abs(mv.q) === 2 ? easeHalf : ease);
+// A layer frozen part-way through a turn (scrub slider). The state itself is never changed by a pose.
+let pose = null;
+function clearPose() {
+  if (!pose) return;
+  invalidate();
+  pivot.quaternion.identity(); pivot.updateMatrixWorld();
+  pose.forEach((g) => cubeRoot.attach(g));
+  if (layerHL.parent === pivot) cubeRoot.attach(layerHL);
+  pose = null;
+}
+function poseMove(mv, f) {
+  clearPose();
+  invalidate();
+  const ai = Cube.AXI[mv.axis];
+  pose = pieces.filter((p) => mv.layers.includes(p.c.pos[ai])).map((p) => p.group);
+  pose.forEach((g) => pivot.attach(g));
+  if (layerHL.visible) pivot.attach(layerHL);
+  pivot.quaternion.setFromAxisAngle(AXIS_VEC[mv.axis], (mv.q * Math.PI) / 2 * turnEase(mv)(f));
+}
+function animateMove(mv, dur) {
+  clearPose();
+  return new Promise((resolve) => {
+    const ai = Cube.AXI[mv.axis];
+    const sel = pieces.filter((p) => mv.layers.includes(p.c.pos[ai])).map((p) => p.group);
+    sel.forEach((g) => pivot.attach(g));
+    if (layerHL.visible) pivot.attach(layerHL);
+    anim = { mv, sel, axis: AXIS_VEC[mv.axis], angle: (mv.q * Math.PI) / 2, t0: performance.now(), dur, resolve };
+  });
+}
+function finishAnim() {
+  const a = anim; anim = null;
+  a.sel.forEach((g) => cubeRoot.attach(g));
+  pivot.quaternion.identity();
+  Cube.applyMove(state, a.mv);
+  sync();
+  a.resolve();
+}
+
+// Fit the cube into the free area between the heading and the bottom dock.
+let fitDist = HOME_CAM.length();
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  invalidate();
+  // Fixed room for the heading and the dock, so the cube doesn't jump when their content changes size.
+  const hudH = Math.min(120, h * 0.18), dockH = Math.min(210, h * 0.32);
+  const availH = Math.max(h * 0.35, h - hudH - dockH);
+  camera.aspect = w / h;
+  camera.setViewOffset(w, h, 0, (dockH - hudH) / 2, w, h);
+  camera.updateProjectionMatrix();
+  const R = 3.1; // cube plus ribbons
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const distV = (R / tanV) * (h / availH);
+  const distH = R / (tanV * camera.aspect) * 1.08;
+  const prev = fitDist;
+  fitDist = Math.max(distV, distH);
+  controls.minDistance = fitDist * 0.6;
+  controls.maxDistance = fitDist * 2;
+  camera.position.multiplyScalar(fitDist / prev);
+}
+new ResizeObserver(resize).observe(view);
+
+let lastDraw = 0;
+renderer.setAnimationLoop((now) => {
+  if (anim) {
+    const t = Math.min(1, (now - anim.t0) / anim.dur);
+    pivot.quaternion.setFromAxisAngle(anim.axis, anim.angle * turnEase(anim.mv)(t));
+    if (t >= 1) finishAnim();
+    invalidate();
+  }
+  if (controls.update()) invalidate();
+  // a static picture is not redrawn; the looping arrow alone is drawn at up to 60 fps
+  const arrowOnly = arrow.visible && now - lastDraw >= 15;
+  if (!dirty && !arrowOnly) return;
+  if (dirty) dirty--;
+  lastDraw = now;
+  animateArrow(now);
+  const W = view.clientWidth, H = view.clientHeight;
+  renderer.setViewport(0, 0, W, H);
+  renderer.render(scene, camera);
+  const card = $('targetCard');
+  if (targetState && showTarget && !card.hidden) {
+    const r = card.getBoundingClientRect(), c = renderer.domElement.getBoundingClientRect();
+    const head = card.firstElementChild.getBoundingClientRect().height;
+    const x = r.left - c.left, w = r.width, h = r.height - head, y = c.bottom - r.bottom;
+    targetCam.aspect = w / h;
+    targetCam.updateProjectionMatrix();
+    targetCam.position.copy(camera.position).setLength(10.5 * Math.max(1, 1 / targetCam.aspect));
+    targetCam.lookAt(0, 0, 0);
+    renderer.setScissorTest(true);
+    renderer.setScissor(x, y, w, h);
+    renderer.setViewport(x, y, w, h);
+    renderer.render(targetScene, targetCam);
+    renderer.setScissorTest(false);
+  }
+});
+
+/*__APP__*/
+</script>
+</body>
+</html>
