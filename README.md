@@ -4,6 +4,8 @@ An interactive 3D Rubik's cube tutor in a single HTML file. It teaches popular s
 
 No install and no build step are needed to use it. Open `rubiks-cube-guide.html` in a modern browser.
 
+![Cube Coach walking through a CFOP solution of a scrambled cube: the turning layer is outlined with a rotation arrow, the move list and slider show progress through the step, and an inset previews the cube after the step](docs/screenshot.jpg)
+
 ## Features
 
 - **Lessons:** Beginner (layer by layer), CFOP and Roux, plus a notation primer. Each step highlights the pieces that matter, shows an arrow on the turning layer, and previews the target state.
@@ -40,6 +42,7 @@ src/
   solver.js              Beginner, CFOP and two-phase solvers
   i18n.js                Russian and French translations
   app.js                 UI, playback, cube editor and worker plumbing
+docs/screenshot.jpg      README screenshot
 tests/
   solver-test.js         solves random scrambles and checks the results
 ```
